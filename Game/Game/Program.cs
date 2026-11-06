@@ -14,7 +14,7 @@ while (true)
     while (true)
     {
         Console.Clear();
-        Console.WriteLine("Tutoral(11x11): 0\nEasy(11x21): 1\nMedium(101x11): 2\nHard(101x101): 3\nDemon(5211x101):4\ncustom: 5");
+        Console.WriteLine("Tutoral(11x11): 0\nEasy(11x21): 1\nMedium(101x11): 2\nHard(101x101): 3\nDemon(521x101):4\ncustom: 5");
         string input = Console.ReadKey().KeyChar.ToString();
         if (byte.TryParse(input, out byte idx))
         {
@@ -109,12 +109,7 @@ class Board
         GenerateMaze(-1,1, 0);
         board.Or(noise());
         this[height - 2, width - 1] = true;
-        path = new int[height, width];
-        for (int i = 0; i < height; i++)
-            for (int j = 0; j < width; j++)
-                path[i, j] = int.MaxValue;
-        findPath(width - 2, height - 2, 0);
-        path[height - 2, width - 1] = 0;
+        findPath();
     }
     private void GenerateMaze(int x, int y, byte dirIdx)
     {
@@ -137,13 +132,31 @@ class Board
             options.RemoveAt(index);
         }
     }
-    private void findPath(int x, int y, int step)
+    private void findPath()
     {
-        if (x <= 0 || y <= 0 || height <= y || width <= x || !this[y, x] ||  path[y, x] <= step)
-            return;
-        path[y, x] = step;
-        foreach ((int, int) dir in moves)
-            findPath(x + dir.Item1, y + dir.Item2, step + 1);
+        path = new int[height, width];
+        for (int i = 0; i < height; i++)
+            for (int j = 0; j < width; j++)
+                path[i, j] = int.MaxValue;
+        path[1, 0] = int.MaxValue-1;
+        path[height - 2, width - 1] = 0;
+        Queue<(int, int)> queue = new Queue<(int, int)>(board.Length/2);
+        queue.Enqueue((height - 2, width - 2));
+        while (0 < queue.Count)
+        {
+            (int, int) idx = queue.Dequeue();
+            if (path[idx.Item1, idx.Item2] != int.MaxValue)
+                continue;
+            int min = int.MaxValue;
+            foreach ((int, int) move in moves) {
+                (int, int) newIdx = (idx.Item1 + move.Item1, idx.Item2 + move.Item2);
+                if (this[newIdx.Item1, newIdx.Item2] && path[newIdx.Item1, newIdx.Item2] == int.MaxValue)
+                    queue.Enqueue(newIdx);
+                else
+                    min = Math.Min(min, path[newIdx.Item1, newIdx.Item2]);
+            }
+            path[idx.Item1, idx.Item2] = min + 1;
+        }
     }
     public bool makeMove ((int,int) move)
     {
