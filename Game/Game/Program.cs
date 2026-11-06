@@ -103,34 +103,47 @@ class Board
     public Board(int h, int w)
     {
         Debug.Assert(3 <= h && 3 <= w && (h & w & 1) == 1);
-        board = new BitArray(h * w);
         height = h;
         width = w;
-        GenerateMaze(-1,1, 0);
-        board.Or(noise());
+        GenerateMaze();
         this[height - 2, width - 1] = true;
         findPath();
     }
-    private void GenerateMaze(int x, int y, byte dirIdx)
+    private void GenerateMaze()
     {
+        board = new BitArray(height * width);
+        BitArray options = new BitArray(board.Length*2 - 2, true);
+        Stack<(int, int)> stack = new Stack<(int, int)>(board.Length / 2);
+        (int, int) current = (1, 1);
+        while (true)
         {
-            (int, int) dir = moves[dirIdx];
-            x += dir.Item1 << 1;
-            y += dir.Item2 << 1;
-            if (x <= 0 || y <= 0 || height <= y || width <= x || this[y, x])
-                return;
-            dir = (-dir.Item1, -dir.Item2);
-            this[y, x] = true;
-            this[y + dir.Item2, x + dir.Item1] = true;
+            List<byte> currentOptions = new List<byte>(4);
+            for (byte i = 0; i < 4; i++)
+                if (options[(((current.Item1 - 1) * width + (current.Item2 - 1)) << 1) + i])
+                    currentOptions.Add(i);
+            if (currentOptions.Count == 0)
+            {
+                if (stack.Count == 0)
+                    break;
+                current = stack.Pop();
+                continue;
+            }
+            byte index = currentOptions[(byte)rand.Next(currentOptions.Count)];
+            options[(((current.Item1 - 1) * width + (current.Item2 - 1)) << 1) + index] = false;
+            (int, int) dir = moves[index];
+            stack.Push(current);
+            current = (current.Item1 + dir.Item1 * 2, current.Item2 + dir.Item2 * 2);
+            if (current.Item1 < 0 || current.Item2 < 0 || height <= current.Item1 || width <= current.Item2 || this[current.Item1, current.Item2])
+            {
+                current = stack.Pop();
+                continue;
+            }
+            this[current.Item1, current.Item2] = true;
+            this[current.Item1 - dir.Item1, current.Item2 - dir.Item2] = true;
+            options[(((current.Item1 - 1) * width + (current.Item2 - 1)) << 1) + ((index-2)&3)] = false;
         }
-        List<byte> options = new List<byte>(4) { 0, 1, 2, 3 };
-        options.RemoveAt(dirIdx);
-        while (0 < options.Count)
-        {
-            byte index = (byte)rand.Next(options.Count);
-            GenerateMaze(x, y, options[index]);
-            options.RemoveAt(index);
-        }
+        this[1, 0] = true;
+        board.Or(noise());
     }
     private void findPath()
     {
@@ -181,9 +194,8 @@ class Board
     public override string ToString()
     {
         return hint ? getPath() : getBoard();
-
     }
-    public  string getBoard()
+    public string getBoard()
     {
         if ((1, 0) == playerPos)
             return ($"###\n#@.\n##{(this[2, 1] ? '.' : '#')}");
@@ -191,9 +203,7 @@ class Board
         for (int i = playerPos.Item1-1; i <= playerPos.Item1+1; i++)
         {
             for (int j = playerPos.Item2-1; j <= playerPos.Item2+1; j++)
-            {
                 s += (i, j) == playerPos ? "@" : (this[i, j] ? "." : "#");
-            }
             s += "\n";
         }
         return s;
@@ -207,9 +217,7 @@ class Board
         for (int i = playerPos.Item1 - 1; i <= playerPos.Item1 + 1; i++)
         {
             for (int j = playerPos.Item2 - 1; j <= playerPos.Item2 + 1; j++)
-            {
                 s += (j < 0 || width <= j) ? "#" : ((i, j) == playerPos ? "@" : (this[i, j] ? (path[i, j] <= min?"+": "."): "#"));
-            }
             s += "\n";
         }
         return s;
