@@ -1,87 +1,91 @@
 ﻿using System.Collections;
 using System.Diagnostics;
 
-
-Char[] moves = { 's', 'd', 'w', 'a' };
-(int, int)[] diffculties = {(11, 11), (11,21), (101,11), (101,101), (521,101) };
-Console.CursorVisible = false;
-Console.WriteLine("Move with \"wasd\"\nPress h to enable hint\nPress any key to start");
-Console.ReadKey();
-double score = 0;
-while (true)
+class Program
 {
-    Board b;
-    while (true)
+    private static readonly char[] moves = { 's', 'd', 'w', 'a' };
+    private static readonly (int, int)[] diffculties = { (11, 11), (11, 21), (101, 11), (101, 101), (521, 101) };
+    static void Main(string[] args)
     {
-        Console.Clear();
-        Console.WriteLine("Tutoral(11x11): 0\nEasy(11x21): 1\nMedium(101x11): 2\nHard(101x101): 3\nDemon(521x101):4\ncustom: 5");
-        string input = Console.ReadKey().KeyChar.ToString();
-        if (byte.TryParse(input, out byte idx))
+        Console.CursorVisible = false;
+        Console.WriteLine("Move with \"wasd\"\nPress h to enable hint\nPress any key to start");
+        Console.ReadKey();
+        double score = 0;
+        while (true)
         {
-            if (idx <= 4)
+            Board b;
+            while (true)
             {
-                b = new Board(diffculties[idx]);
-                score += getScore(diffculties[idx].Item1, diffculties[idx].Item2);
-                break;
-            }
-            if (idx == 5)
-            {
-                char[] dims = { 'h', 'w' };
-                int[] dimentions = new int[2];
-                for (int i = 0; i < 2; i++)
+                Console.Clear();
+                Console.WriteLine("Tutoral(11x11): 0\nEasy(11x21): 1\nMedium(101x11): 2\nHard(101x101): 3\nDemon(521x101):4\ncustom: 5");
+                string input = Console.ReadKey().KeyChar.ToString();
+                if (byte.TryParse(input, out byte idx))
                 {
-                    while (true)
+                    if (idx <= 4)
                     {
-                        Console.Clear();
-                        Console.WriteLine($"Enter an odd number for {dims[i]}");
-                        string size = Console.ReadLine();
-                        if (short.TryParse(size, out short dim) && 5 <= dim && (dim & 1) == 1)
+                        b = new Board(diffculties[idx]);
+                        score += getScore(diffculties[idx].Item1, diffculties[idx].Item2);
+                        break;
+                    }
+                    if (idx == 5)
+                    {
+                        char[] dims = { 'h', 'w' };
+                        int[] dimentions = new int[2];
+                        for (int i = 0; i < 2; i++)
                         {
-                            dimentions[i] = dim;
-                            break;
+                            while (true)
+                            {
+                                Console.Clear();
+                                Console.WriteLine($"Enter an odd number for {dims[i]}");
+                                string size = Console.ReadLine();
+                                if (short.TryParse(size, out short dim) && 5 <= dim && (dim & 1) == 1)
+                                {
+                                    dimentions[i] = dim;
+                                    break;
+                                }
+                            }
                         }
+                        b = new Board((dimentions[0], dimentions[1]));
+                        score += getScore(dimentions[0], dimentions[1]);
+                        break;
                     }
                 }
-                b = new Board((dimentions[0], dimentions[1]));
-                score += getScore(dimentions[0], dimentions[1]);
-                break;
+            }
+            while (true)
+            {
+                if (score == 0)
+                    b.hint = false;
+                Console.Clear();
+                Console.WriteLine(b);
+                Console.WriteLine($"Score: {score}");
+                char c = Console.ReadKey().KeyChar;
+                if (b.hint)
+                    score--;
+                if (c == 'h')
+                    b.hint = !b.hint;
+                else if (!(moves.Contains(c) && b.makeMove(Board.moves[moves.IndexOf(c)])))
+                {
+                    if (b.hint)
+                        score++;
+                    Console.Beep();
+                }
+                else if (b.Won)
+                {
+                    Console.Clear();
+                    Console.BackgroundColor = ConsoleColor.Magenta;
+                    Console.WriteLine("Congratulations! You won!");
+                    Console.ResetColor();
+                    Console.ReadKey();
+                    break;
+                }
             }
         }
     }
-    ;
-    while (true)
-    {
-        if (score == 0)
-            b.hint = false;
-        Console.Clear();
-        Console.WriteLine(b);
-        Console.WriteLine($"Score: {score}");
-        char c = Console.ReadKey().KeyChar;
-        if (b.hint)
-            score--;
-        if (c == 'h')
-            b.hint = !b.hint;
-        else if (!(moves.Contains(c) && b.makeMove(Board.moves[moves.IndexOf(c)])))
-        {
-            if (b.hint)
-                score++;
-            Console.Beep();
-        }
-        else if (b.Won)
-        {
-            Console.Clear();
-            Console.BackgroundColor = ConsoleColor.Magenta;
-            Console.WriteLine("Congratulations! You won!");
-            Console.ResetColor();
-            Console.ReadKey();
-            break;
-        }
-    }
-}
 
-double getScore(int h, int w)
-{
-    return Math.Round(Math.Sqrt(h*w*(h+w*.5)));
+    static double getScore(int h, int w)
+    {
+        return Math.Round(Math.Sqrt(h * w * (h + w * .5)));
+    }
 }
 
 class Board
@@ -195,14 +199,6 @@ class Board
     public override string ToString()
     {
         return hint ? getPath() : getBoard();
-        string s = "";
-        for (int i = 0; i < height; i++)
-        {
-            for (int j = 0; j < width; j++)
-                s += (i, j) == playerPos ? "@" : (this[i, j] ? "." : "#");
-            s += "\n";
-        }
-        return s;
     }
     public string getBoard()
     {
