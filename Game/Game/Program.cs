@@ -35,7 +35,7 @@ while (true)
                         Console.Clear();
                         Console.WriteLine($"Enter an odd number for {dims[i]}");
                         string size = Console.ReadLine();
-                        if (int.TryParse(size, out int dim) && 5 <= dim && (dim & 1) == 1)
+                        if (short.TryParse(size, out short dim) && 5 <= dim && (dim & 1) == 1)
                         {
                             dimentions[i] = dim;
                             break;
@@ -92,7 +92,7 @@ class Board
     private int height;
     private int width;
     private static Random rand = new Random();
-    public static readonly (int, int)[] moves = { (1, 0), (0, 1), (-1, 0), (0, -1) };
+    public static readonly (short, short)[] moves = { (1, 0), (0, 1), (-1, 0), (0, -1) };
     public bool hint = false;
     public bool Won
     {
@@ -106,15 +106,16 @@ class Board
         height = h;
         width = w;
         GenerateMaze();
-        this[height - 2, width - 1] = true;
         findPath();
+        this[1, 0] = true;
+        this[height - 2, width - 1] = true;
     }
     private void GenerateMaze()
     {
         board = new BitArray(height * width);
         BitArray options = new BitArray(board.Length*2 - 2, true);
-        Stack<(int, int)> stack = new Stack<(int, int)>(board.Length / 2);
-        (int, int) current = (1, 1);
+        Stack<(short, short)> stack = new Stack<(short, short)>(board.Length / 2);
+        (short, short) current = (1, 1);
         while (true)
         {
             List<byte> currentOptions = new List<byte>(4);
@@ -130,9 +131,9 @@ class Board
             }
             byte index = currentOptions[(byte)rand.Next(currentOptions.Count)];
             options[(((current.Item1 - 1) * width + (current.Item2 - 1)) << 1) + index] = false;
-            (int, int) dir = moves[index];
+            (short, short) dir = moves[index];
             stack.Push(current);
-            current = (current.Item1 + dir.Item1 * 2, current.Item2 + dir.Item2 * 2);
+            current = ((short)(current.Item1 + dir.Item1 * 2), (short)(current.Item2 + dir.Item2 * 2));
             if (current.Item1 < 0 || current.Item2 < 0 || height <= current.Item1 || width <= current.Item2 || this[current.Item1, current.Item2])
             {
                 current = stack.Pop();
@@ -142,7 +143,7 @@ class Board
             this[current.Item1 - dir.Item1, current.Item2 - dir.Item2] = true;
             options[(((current.Item1 - 1) * width + (current.Item2 - 1)) << 1) + ((index-2)&3)] = false;
         }
-        this[1, 0] = true;
+        
         board.Or(noise());
     }
     private void findPath()
@@ -153,16 +154,16 @@ class Board
                 path[i, j] = int.MaxValue;
         path[1, 0] = int.MaxValue-1;
         path[height - 2, width - 1] = 0;
-        Queue<(int, int)> queue = new Queue<(int, int)>(board.Length/2);
-        queue.Enqueue((height - 2, width - 2));
+        Queue<(short, short)> queue = new Queue<(short, short)>(board.Length/2);
+        queue.Enqueue(((short)(height - 2), (short)(width - 2)));
         while (0 < queue.Count)
         {
-            (int, int) idx = queue.Dequeue();
+            (short, short) idx = queue.Dequeue();
             if (path[idx.Item1, idx.Item2] != int.MaxValue)
                 continue;
             int min = int.MaxValue;
-            foreach ((int, int) move in moves) {
-                (int, int) newIdx = (idx.Item1 + move.Item1, idx.Item2 + move.Item2);
+            foreach ((short, short) move in moves) {
+                (short, short) newIdx = ((short)(idx.Item1 + move.Item1), (short)(idx.Item2 + move.Item2));
                 if (this[newIdx.Item1, newIdx.Item2] && path[newIdx.Item1, newIdx.Item2] == int.MaxValue)
                     queue.Enqueue(newIdx);
                 else
@@ -171,7 +172,7 @@ class Board
             path[idx.Item1, idx.Item2] = min + 1;
         }
     }
-    public bool makeMove ((int,int) move)
+    public bool makeMove ((short, short) move)
     {
         (int, int) newPos = (playerPos.Item1 + move.Item1, playerPos.Item2 + move.Item2);
         if (newPos.Item1 < 0 || newPos.Item2 < 0 || height < newPos.Item1 || width < newPos.Item2 || !this[newPos.Item1, newPos.Item2] || !moves.Contains(move))
@@ -194,6 +195,14 @@ class Board
     public override string ToString()
     {
         return hint ? getPath() : getBoard();
+        string s = "";
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+                s += (i, j) == playerPos ? "@" : (this[i, j] ? "." : "#");
+            s += "\n";
+        }
+        return s;
     }
     public string getBoard()
     {
@@ -224,16 +233,16 @@ class Board
     }
     private BitArray noise(int cycles = 5)
     {
-        BitArray construction = new BitArray(board.Length);
-        for (int i = width+1; i < width * 2 -1; i++)
-            construction[i] = true;
-        BitArray output = new BitArray(board.Length);
-        for (int i = 0; i < height - 3; i++)
-        {
-            output.Or(construction);
-            construction.LeftShift(width);
-        }
-        output.Or(construction);
+        BitArray output = new BitArray(board.Length, true);
+        int[] rows = {0, height - 1};
+        int[] colums = {0, width - 1};
+        for (int i = 0; i < 2; i++)
+            for (int j = 0; j < width; j++)
+                    output[rows[i] * width + j] = false;
+        for (int i = 0; i < 2; i++)
+            for (int j = 1; j < height-1; j++ )
+                output[j * width + colums[i]] = false;
+
 
         for (int i = 0; i < cycles; i++)
         {
